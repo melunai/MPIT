@@ -1,6 +1,6 @@
 // mockData.ts
 
-export type BidStyle = "green" | "blue" | "orange" | "gray";
+export type BidStyle = "green" | "blue" | "red" | "gray";
 
 export type BidOption = {
   id: string;
@@ -52,7 +52,7 @@ const mock: OrderMock = {
       name: "Экстремальный",
       label: "395 ₽",
       value: 395,
-      style: "orange",
+      style: "red",
       probability: 31,
     },
   ],

@@ -4,20 +4,20 @@ export default function OrderInfo({
   price
 }: { fromText: string; toText: string; price: number }) {
   return (
-    <div className="rounded-[16px] border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-3">
+    <div className="rounded-[16px] border border-transparent bg-[color:var(--surface)] p-3 text-[color:var(--text-primary)]">
 
       <div className="flex items-start gap-3">
         <div className="h-10 w-10 rounded-full bg-neutral-200 dark:bg-neutral-800 flex items-center justify-center text-neutral-500">👤</div>
 
         <div className="flex-1 min-w-0">
           <div className="text-sm">
-            <span className="text-blue-600 font-semibold">A </span>{fromText}
+            <span className="font-semibold" style={{color:"var(--blue)"}}>A </span>{fromText}
           </div>
           <div className="text-sm mt-1">
-            <span className="text-green-600 font-semibold">B </span>{toText}
+            <span className="font-semibold" style={{color:"var(--green-strong)"}}>B </span>{toText}
           </div>
 
-          <div className="mt-2 text-[18px] font-semibold" style={{color:"#ef4444"}}>
+          <div className="mt-2 text-[18px] font-semibold" style={{color:"var(--green-strong)"}}>
             {price} ₽
           </div>
 
