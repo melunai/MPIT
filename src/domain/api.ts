@@ -1,6 +1,6 @@
 export type BidPayload = { orderId: string; price: number };
 
-export async function sendBid(payload: BidPayload): Promise<{ ok: boolean; bidId?: string }> {
+export async function sendBid(): Promise<{ ok: boolean; bidId?: string }> {
   const wait = 1200 + Math.random() * 1300;
   await new Promise(r => setTimeout(r, wait));
   const ok = Math.random() < 0.8;
