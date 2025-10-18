@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
 
 :root {
   --accent: #32d74b;     
@@ -53,15 +54,13 @@ body {
 }
 .dark .btn-ghost { @apply bg-neutral-800/60 text-neutral-100; }
 
-.price-chip {
-  @apply inline-flex items-center justify-center px-4 h-10 rounded-full text-sm font-semibold border bg-white text-neutral-900 transition;
-  border-color: rgba(0,0,0,.08);
-}
+.price-chip { @apply inline-flex items-center justify-center gap-2 px-4 h-10 rounded-full text-sm font-semibold border bg-white text-neutral-900 transition; border-color: rgba(0,0,0,.08); }
 .dark .price-chip { @apply bg-neutral-900 text-neutral-100 border-neutral-800; }
-
-.price-chip.green { @apply text-green-700; background: #eaffea; border-color: #a7f3d0; }
-.price-chip.blue  { @apply text-blue-700;  background: #eaf0ff; border-color: #bfdbfe; }
-.price-chip.orange{ @apply text-orange-700;background: #fff3e6; border-color: #fed7aa; }
-
+.price-chip.green { @apply text-green-700;  background:#eaffea;  border-color:#a7f3d0; }
+.price-chip.blue  { @apply text-blue-700;   background:#eaf0ff;  border-color:#bfdbfe; }
+.price-chip.orange{ @apply text-orange-700; background:#fff3e6;  border-color:#fed7aa; }
 .price-chip.active { box-shadow: 0 0 0 2px var(--accent-600) inset; }
+.price-chip:disabled { opacity:.6; cursor:not-allowed; }
+
+
 

@@ -1,8 +1,8 @@
 export default function OrderInfo({
-  from,
-  to,
+  fromText,
+  toText,
   price
-}: { from: string; to: string; price: number }) {
+}: { fromText: string; toText: string; price: number }) {
   return (
     <div className="rounded-[16px] border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-3">
       <div className="text-center text-[18px] font-semibold mb-2">Заказ</div>
@@ -12,10 +12,10 @@ export default function OrderInfo({
 
         <div className="flex-1 min-w-0">
           <div className="text-sm">
-            <span className="text-blue-600 font-semibold">A </span>{from}
+            <span className="text-blue-600 font-semibold">A </span>{fromText}
           </div>
           <div className="text-sm mt-1">
-            <span className="text-green-600 font-semibold">B </span>{to}
+            <span className="text-green-600 font-semibold">B </span>{toText}
           </div>
 
           <div className="mt-2 text-[18px] font-semibold" style={{color:"#ef4444"}}>
