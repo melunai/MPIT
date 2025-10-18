@@ -6,6 +6,7 @@ import {
   Polyline,
   Tooltip,
   useMap,
+  ZoomControl
 } from "react-leaflet";
 import { useRouteOSRM } from "../hooks/useRouteOSRM";
 import type { LineString, Position } from "geojson";
@@ -39,7 +40,7 @@ function toLatLngPath(geometry: LineString | null | undefined): [number, number]
 export default function MapInteractive({
   from,
   to,
-  height = 220,
+  height = 300,
 }: {
   from: Pt;
   to: Pt;
@@ -61,7 +62,9 @@ export default function MapInteractive({
         scrollWheelZoom
         doubleClickZoom
         className="w-full relative"
-      >
+      zoomControl={false}         // отключаем дефолт (слева-сверху)
+    >
+      <ZoomControl position="bottomright" />  {/* <— вправо-вниз */}
         <div className="absolute w-19 h-4 bg-white z-[9999] bottom-0 right-23 text-center">
             <a className="text-slate-700">Melunai</a>
         </div>

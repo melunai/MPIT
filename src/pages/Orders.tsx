@@ -1,141 +1,196 @@
-import { useMemo, useState } from "react";
-import MapInteractive from "../components/MapInteractive";
+import { useMemo, useState, useEffect } from "react";
 import OrderInfo from "../components/OrderInfo";
-import Spinner from "../components/Spinner";
 import CustomPriceModal from "../components/CustomPriceModal";
-import { proposeOptions } from "../domain/mock";
-import type{ Order, BidOption } from "../domain/types";
-import { BID_LABELS } from "../domain/types";
-import { sendBid } from "../domain/api";
-import { useNearestRoad } from "../hooks/useOverpass";
+import Spinner from "../components/Spinner";
+import mock from "../data/mockData";
+import Modal from "../components/Modal";
 
-export default function Orders() {
-  // Координаты (пример — Якутск)
-  const from = { lat: 62.028, lon: 129.734 };
-  const to   = { lat: 62.042, lon: 129.720 };
+type Props = { onDecline?: () => void };
+function decide(prob: number) { return Math.random() * 100 < prob; }
 
-  const { road: fromRoad } = useNearestRoad(from.lat, from.lon);
-  const { road: toRoad }   = useNearestRoad(to.lat, to.lon);
+export default function Orders({ onDecline }: Props) {
+  const { fromText, toText, basePrice } = mock;
 
-  const order: Order = useMemo(()=>({
-    id: "A-123",
-    priceStart: 300,
-    distanceM: 4200,
-    pickupM: 331,
-    userRating: 4.9
-  }), []);
+  /* настройки вероятностей */
+  const [prob0, setProb0] = useState(60);
+  const [prob5, setProb5] = useState(50);
+  const [prob10, setProb10] = useState(40);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
-  const options = proposeOptions(order);
-
-  // выбранная опция
-  const [selected, setSelected] = useState<BidOption | null>(null);
-
-  // отправка бида
-  const [sending, setSending] = useState(false);
-  const [lastMessage, setLastMessage] = useState<string>("Выбрано: стартовая цена — 300 ₽");
-  const [result, setResult] = useState<null | { ok: boolean; bidId?: string }>(null);
-
-  // модалка своей цены
-  const [customOpen, setCustomOpen] = useState(false);
-
-  const chipColor = (label: BidOption["label"]) => {
-    if (label === BID_LABELS[0]) return "green";   // Надёжный
-    if (label === BID_LABELS[1]) return "blue";    // Оптимальный
-    return "orange";                               // Смелый
-  };
-
-  const onPickChip = (opt: BidOption) => {
-    setSelected(opt);
-    setLastMessage(`Выбрано: «${opt.label}» — ${opt.price} ₽ (шанс ${Math.round(opt.pAccept*100)}%)`);
-    setResult(null);
-  };
-
-  const onConfirmCustom = async (price: number) => {
-    setCustomOpen(false);
-    setSelected(null);
-    await doSend(price);
-  };
-
-  async function doSend(price: number) {
-    setSending(true);
-    setResult(null);
-    setLastMessage(`Отправка бида на ${price} ₽…`);
+  useEffect(() => {
     try {
-      const r = await sendBid({ orderId: order.id, price });
-      setResult(r);
-      setLastMessage(r.ok ? `✅ Бид отправлен: ${price} ₽ (ID: ${r.bidId})` : `❌ Не удалось отправить бид: ${price} ₽`);
-    } finally {
-      setSending(false);
+      const s = localStorage.getItem("drivee.probs");
+      if (!s) return;
+      const { p0, p5, p10 } = JSON.parse(s);
+      if (typeof p0 === "number") setProb0(p0);
+      if (typeof p5 === "number") setProb5(p5);
+      if (typeof p10 === "number") setProb10(p10);
+    } catch {}
+  }, []);
+  useEffect(() => {
+    localStorage.setItem("drivee.probs", JSON.stringify({ p0: prob0, p5: prob5, p10: prob10 }));
+  }, [prob0, prob5, prob10]);
+
+  /* сценарии */
+  const options = useMemo(() => {
+    const p0 = basePrice;
+    const p5 = Math.round(basePrice * 1.05);
+    const p10 = Math.round(basePrice * 1.10);
+    return [
+      { id: "base",   name: "Начальная",    value: p0,  label: `${p0} ₽`,  prob: prob0,  style: "gray" },
+      { id: "p5",     name: "На 5% выше",   value: p5,  label: `${p5} ₽`,  prob: prob5,  style: "green" },
+      { id: "p10",    name: "На 10% выше",  value: p10, label: `${p10} ₽`, prob: prob10, style: "blue" },
+      { id: "custom", name: "Своя цена",    value: NaN, label: "+",        prob: NaN,    style: "" },
+    ];
+  }, [basePrice, prob0, prob5, prob10]);
+
+  /* выбор/статусы */
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedPrice, setSelectedPrice] = useState<number | null>(null);
+  const [selectedProb, setSelectedProb] = useState<number | null>(null);
+  const [status, setStatus] = useState<"idle" | "sending" | "accepted" | "declined" | "error">("idle");
+
+  const selected = useMemo(() => options.find(o => o.id === selectedId) ?? null, [options, selectedId]);
+
+  const selectionText = useMemo(() => {
+    if (!selected && selectedPrice == null) return null;
+    const name  = selected?.name ?? "Своя цена";
+    const price = selected?.value ?? selectedPrice!;
+    const prob  = selected?.prob ?? selectedProb ?? 50;
+    return `Выбрано: “${name}” — ${price} ₽ (Шанс ${prob}%)`;
+  }, [selected, selectedPrice, selectedProb]);
+
+  const pForBar = useMemo(() => {
+    const prob = selected?.prob ?? selectedProb ?? prob0;
+    return Math.max(0, Math.min(1, prob / 100));
+  }, [selected, selectedProb, prob0]);
+
+  const primaryLabel = useMemo(() => {
+    if (status === "sending") return "Отправка…";
+    if (selectedPrice != null) return `Предложить ${selectedPrice} ₽`;
+    return `Принять за ${basePrice} ₽`;
+  }, [status, selectedPrice, basePrice]);
+
+  function toggleScenario(id: string) {
+    if (id === "custom") { setSelectedId("custom"); setStatus("idle"); return; }
+    if (selectedId === id) {
+      setSelectedId(null); setSelectedPrice(null); setSelectedProb(null); setStatus("idle");
+    } else {
+      const opt = options.find(o => o.id === id)!;
+      setSelectedId(id); setSelectedPrice(opt.value); setSelectedProb(opt.prob); setStatus("idle");
     }
   }
-
-  const onSendBid = () => {
-    const price = selected?.price ?? order.priceStart;
-    return doSend(price);
-  };
+  function onCustom(price: number) {
+    setSelectedId("custom"); setSelectedPrice(price); setSelectedProb(null); setStatus("idle");
+  }
+  async function onPrimary() {
+    const offer = selectedPrice ?? basePrice;
+    const prob  = selectedProb ?? prob0;
+    setStatus("sending");
+    try {
+      await new Promise(res => setTimeout(res, 900));
+      const ok = decide(prob);
+      setStatus(ok ? "accepted" : "declined");
+    } catch { setStatus("error"); }
+  }
 
   return (
-    <div className="space-y-3">
-      {/* Интерактивная карта */}
-      <MapInteractive from={from} to={to} />
-
-      <OrderInfo
-        fromText={fromRoad ? `ул. ${fromRoad}` : "Точка A — улица определяется…"}
-        toText={toRoad ? `ул. ${toRoad}` : "Точка B — улица определяется…"}
-        price={order.priceStart}
-      />
-
-      {/* сообщение — ВЫШЕ кнопки */}
-      <div className="text-center text-xs text-neutral-700 dark:text-neutral-300 min-h-[20px]">
-        {lastMessage}
-      </div>
-
-      {/* КНОПКА ОТПРАВКИ БИДА */}
+    <div className="space-y-4 relative">
+      {/* шестерёнка — в правом верхнем углу блока */}
       <button
-        className="btn-drivee disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-        onClick={onSendBid}
-        disabled={sending}
+        className="absolute right-0 -top-1 rounded-lg p-2 border border-neutral-200 bg-white shadow"
+        onClick={() => setSettingsOpen(true)}
+        title="Настройки сценариев"
+        aria-label="Настройки сценариев"
       >
-        {sending ? (<><Spinner /> Ожидание подтверждения…</>) : (<>Отправить бид</>)}
+        <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.89 3.31.877 2.42 2.42a1.724 1.724 0 001.065 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.89 1.543-.877 3.31-2.42 2.42a1.724 1.724 0 00-2.573 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.89-3.31-.877-2.42-2.42A1.724 1.724 0 004.317 14.35c-1.756-.426-1.756-2.924 0-3.35.61-.148 1.1-.638 1.248-1.248.89-1.543-.877-3.31 2.42-2.42A1.724 1.724 0 0010.325 4.317z" />
+        </svg>
       </button>
 
-      <div className="text-center text-xs text-neutral-500">Предложите свою цену:</div>
+      {/* инфо: цена сверху не меняется */}
+      <OrderInfo fromText={fromText} toText={toText} price={basePrice} />
 
-      {/* ЧИПЫ — ТОЛЬКО ВЫБОР */}
-      <div className="flex items-center justify-center gap-2">
-        {options.map(opt => {
-          const active = selected?.label === opt.label;
-          return (
-            <button
-              key={opt.label}
-              className={`price-chip ${chipColor(opt.label)} ${active ? "active" : ""}`}
-              onClick={()=>onPickChip(opt)}
-              disabled={sending}
-              aria-label={`Выбрать ${opt.price} ₽`}
-              title={`Шанс: ${Math.round(opt.pAccept*100)}% • Ожид.доход: ${Math.round(opt.expectedIncome)} ₽`}
-            >
-              {opt.price} ₽
-            </button>
-          );
-        })}
-        <button className="price-chip" title="Другая цена…" onClick={()=>setCustomOpen(true)}>✎</button>
+      {/* подпись над полосой */}
+      {selectionText && <div className="text-sm text-neutral-600 -mt-2">{selectionText}</div>}
+
+      {/* полоса вероятности — БЕЗ текста снизу */}
+
+      {/* чипы */}
+      <div className="flex flex-wrap gap-2 mt-3">
+        {options.map(opt => (
+          <button
+            key={opt.id}
+            onClick={() => toggleScenario(opt.id)}
+            disabled={status === "sending"}
+            className={`price-chip ${opt.style} ${selectedId === opt.id ? "active" : ""}`}
+            aria-pressed={selectedId === opt.id}
+            title={opt.name}
+          >
+            {opt.label}
+          </button>
+        ))}
       </div>
 
-      <button className="btn-ghost">Закрыть</button>
-
-      {result && (
-        <div className={`text-center text-sm ${result.ok ? "text-green-600" : "text-red-600"}`}>
-          {result.ok ? "Подтверждено системой" : "Нет подтверждения. Повторите попытку."}
+      {/* статусы */}
+      {status === "sending" && (
+        <div className="flex items-center gap-2 text-sm text-neutral-500">
+          <Spinner /> Отправка...
         </div>
       )}
+      {status === "accepted" && <div className="text-green-600 text-sm">Подтверждено заказчиком.</div>}
+      {status === "declined" && <div className="text-orange-600 text-sm">Не подтверждено.</div>}
+      {status === "error" && <div className="text-red-500 text-sm">Ошибка при отправке</div>}
 
-      {/* Модалка своей цены */}
+      {/* ЛИПКИЙ футер с кнопками — ВСЕГДА ВЛЕЗАЕТ */}
+      <div className="sheet-actions">
+        <div className="grid grid-cols-1 gap-3">
+          <button className="btn-drivee w-full disabled:opacity-60" onClick={onPrimary} disabled={status === "sending"}>
+            {status === "sending" ? "Отправка…" : (selectedPrice != null ? `Предложить ${selectedPrice} ₽` : `Принять за ${basePrice} ₽`)}
+          </button>
+          <button
+            className="btn-ghost w-full text-red-600 border border-red-200 bg-white disabled:opacity-60"
+            onClick={() => onDecline?.()}
+            disabled={status === "sending"}
+          >
+            Отказаться
+          </button>
+        </div>
+      </div>
+
+      {/* Кастомная цена (модалка — через портал в #modal-root) */}
       <CustomPriceModal
-        open={customOpen}
-        basePrice={order.priceStart}
-        onClose={()=>setCustomOpen(false)}
-        onConfirm={onConfirmCustom}
+        open={selectedId === "custom"}
+        basePrice={basePrice}
+        onClose={() => setSelectedId(null)}
+        onConfirm={(price) => onCustom(price)}
       />
+
+      {/* Настройки процентов (модалка) */}
+      <Modal open={settingsOpen} onClose={() => setSettingsOpen(false)} ariaLabel="Настройки сценариев">
+        <div className="p-4">
+          <div className="text-lg font-semibold mb-3">Настройки сценариев</div>
+          <div className="space-y-3">
+            <label className="flex items-center justify-between gap-3">
+              <span className="text-sm text-neutral-700">0%</span>
+              <input type="number" min={0} max={100} value={prob0} onChange={e => setProb0(+e.target.value)} className="w-20 border rounded px-2 py-1" />%
+            </label>
+            <label className="flex items-center justify-between gap-3">
+              <span className="text-sm text-neutral-700">+5%</span>
+              <input type="number" min={0} max={100} value={prob5} onChange={e => setProb5(+e.target.value)} className="w-20 border rounded px-2 py-1" />%
+            </label>
+            <label className="flex items-center justify-between gap-3">
+              <span className="text-sm text-neutral-700">+10%</span>
+              <input type="number" min={0} max={100} value={prob10} onChange={e => setProb10(+e.target.value)} className="w-20 border rounded px-2 py-1" />%
+            </label>
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            <button className="btn-ghost" onClick={() => setSettingsOpen(false)}>Отмена</button>
+            <button className="btn-drivee" onClick={() => setSettingsOpen(false)}>Сохранить</button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

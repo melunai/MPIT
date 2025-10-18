@@ -1,23 +1,22 @@
 @import "tailwindcss";
 @import "leaflet/dist/leaflet.css";
 
+/* ====== базовые переменные ====== */
 :root {
-  --accent: #32d74b;     
-  --accent-600: #1ea83a;  
+  --accent: #32d74b;
+  --accent-600: #1ea83a;
+  --drivee-bg: #ffffff; /* светлая тема */
 }
 
 html, body, #root { height: 100%; }
 
 body {
   @apply bg-[color:var(--drivee-bg,transparent)];
-  --drivee-bg: #f8fafb;
 }
 
-.dark body { --drivee-bg: #0b0d0f; }
-
+/* ====== утилки/паттерны (из твоего файла) ====== */
 .drivee-grid-bg {
-  background-image:
-    radial-gradient(rgba(0,0,0,0.04) 1px, transparent 1px);
+  background-image: radial-gradient(rgba(0,0,0,0.04) 1px, transparent 1px);
   background-size: 16px 16px;
 }
 
@@ -25,9 +24,7 @@ body {
   @apply inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium;
   @apply bg-white/60 text-neutral-700 backdrop-blur border border-white/60;
 }
-.dark .badge {
-  @apply bg-white/10 text-neutral-200 border-white/10;
-}
+.dark .badge { @apply bg-white/10 text-neutral-200 border-white/10; }
 
 .btn-accent {
   @apply w-full rounded-xl py-3 font-semibold text-white shadow;
@@ -36,13 +33,9 @@ body {
 .btn-accent:hover { filter: brightness(1.03); }
 .btn-accent:active { transform: translateY(1px); }
 
-.card {
-  @apply rounded-2xl border bg-white shadow-xl;
-  @apply border-neutral-200;
-}
-.dark .card {
-  @apply bg-neutral-900 border-neutral-800 shadow-xl;
-}
+.card { @apply rounded-2xl border bg-white shadow-xl border-neutral-200; }
+.dark .card { @apply bg-neutral-900 border-neutral-800 shadow-xl; }
+
 .btn-drivee {
   @apply w-full rounded-[14px] py-3.5 text-base font-semibold text-white shadow;
   background: linear-gradient(180deg, #69ea5b, #32d74b 60%, #27c843);
@@ -54,13 +47,75 @@ body {
 }
 .dark .btn-ghost { @apply bg-neutral-800/60 text-neutral-100; }
 
-.price-chip { @apply inline-flex items-center justify-center gap-2 px-4 h-10 rounded-full text-sm font-semibold border bg-white text-neutral-900 transition; border-color: rgba(0,0,0,.08); }
+.price-chip {
+  @apply inline-flex items-center justify-center gap-2 px-4 h-10 rounded-full text-sm font-semibold border bg-white text-neutral-900 transition;
+  border-color: rgba(0,0,0,.08);
+}
 .dark .price-chip { @apply bg-neutral-900 text-neutral-100 border-neutral-800; }
-.price-chip.green { @apply text-green-700;  background:#eaffea;  border-color:#a7f3d0; }
-.price-chip.blue  { @apply text-blue-700;   background:#eaf0ff;  border-color:#bfdbfe; }
-.price-chip.orange{ @apply text-orange-700; background:#fff3e6;  border-color:#fed7aa; }
+.price-chip.green  { @apply text-green-700;  background:#eaffea;  border-color:#a7f3d0; }
+.price-chip.blue   { @apply text-blue-700;   background:#eaf0ff;  border-color:#bfdbfe; }
+.price-chip.orange { @apply text-orange-700; background:#fff3e6;  border-color:#fed7aa; }
+.price-chip.gray   { @apply text-neutral-700; background:#f3f4f6; border-color:#e5e7eb; }
 .price-chip.active { box-shadow: 0 0 0 2px var(--accent-600) inset; }
 .price-chip:disabled { opacity:.6; cursor:not-allowed; }
 
+/* ====== top pill ====== */
+.top-pill {
+  @apply rounded-2xl px-5 py-2 text-base font-semibold text-white bg-neutral-800/90 shadow-lg backdrop-blur;
+}
 
+/* ====== ШТОРКА: трансформ-анимация без дерганий ====== */
+.sheet {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 100vh;                 /* фикс. высота, исключает reflow */
+  transform: translateY(100%);   /* скрыта по умолчанию */
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+  z-index: 50;
+  contain: layout paint;
+  backface-visibility: hidden;
+}
+/* открытая позиция — оставляем больше места карте (нижняя панель ~42vh) */
+.sheet--open   { transform: translateY(calc(100% - 42vh)); }
+.sheet--hidden { transform: translateY(100%); }
 
+.sheet-card {
+  @apply rounded-t-3xl bg-white border border-neutral-200 shadow-2xl;
+  height: 100%;
+  display: flex; flex-direction: column;
+}
+
+/* прокрутка внутреннего контента, чтобы ничего не срезалось */
+.sheet-scroll { flex: 1; overflow-y: auto; padding: 0 1rem 1rem 1rem; }
+@supports (padding: env(safe-area-inset-top)) {
+  .sheet-scroll {
+    padding-top: calc(8px + env(safe-area-inset-top));
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  }
+}
+
+/* ручка */
+.sheet-handle { @apply w-full flex items-center justify-center py-3 cursor-pointer select-none; }
+.sheet-handle-dot { @apply h-1.5 w-12 rounded-full bg-neutral-300; }
+
+/* плавающая кнопка «скрыть» — чуть выше шторки */
+.sheet-hide-btn {
+  position: absolute;
+  left: 50%;
+  top: -32px;
+  transform: translateX(-50%);
+  @apply rounded-full px-3 py-1.5 text-sm font-medium bg-white border border-neutral-200 shadow;
+  z-index: 60;
+}
+
+/* FAB открытия шторки */
+.fab-open {
+  position: absolute; left: 50%;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 60;
+}
+
+/* блокировка фонового скролла при открытой шторке/модалке */
+.scroll-lock { overflow: hidden; }

@@ -5,7 +5,6 @@ export default function OrderInfo({
 }: { fromText: string; toText: string; price: number }) {
   return (
     <div className="rounded-[16px] border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-3">
-      <div className="text-center text-[18px] font-semibold mb-2">Заказ</div>
 
       <div className="flex items-start gap-3">
         <div className="h-10 w-10 rounded-full bg-neutral-200 dark:bg-neutral-800 flex items-center justify-center text-neutral-500">👤</div>

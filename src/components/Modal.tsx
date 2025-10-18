@@ -1,17 +1,42 @@
-import React, { type PropsWithChildren } from "react";
+import { useEffect } from "react";
+import { createPortal } from "react-dom";
 
-export default function Modal({
-  open, title, onClose, children, footer
-}: PropsWithChildren<{ open: boolean; title?: string; onClose: ()=>void; footer?: React.ReactNode }>) {
+type Props = {
+  open: boolean;
+  onClose: () => void;
+  children: React.ReactNode;
+  ariaLabel?: string;
+};
+
+export default function Modal({ open, onClose, children, ariaLabel = "Диалог" }: Props) {
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, [open]);
+
   if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative w-full sm:w-[420px] bg-white dark:bg-neutral-900 rounded-t-2xl sm:rounded-2xl shadow-card dark:shadow-cardDark p-4">
-        {title && <div className="text-base font-semibold mb-2">{title}</div>}
-        <div>{children}</div>
-        {footer && <div className="mt-3">{footer}</div>}
+
+  const root = document.getElementById("modal-root");
+
+  const node = (
+    <div
+      className="fixed inset-0 z-[80] flex items-center justify-center p-4 pointer-events-auto"
+      role="dialog"
+      aria-modal="true"
+      aria-label={ariaLabel}
+      onClick={onClose}
+    >
+      <div className="absolute inset-0 bg-black/40" />
+      <div
+        className="relative z-[81] w-full max-w-md max-h-[90vh] overflow-auto rounded-2xl bg-white shadow-2xl border border-neutral-200"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {children}
       </div>
     </div>
   );
+
+  return root ? createPortal(node, root) : createPortal(node, document.body);
 }
