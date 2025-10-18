@@ -1,4 +1,3 @@
-import ProbabilityBar from "./ProbabilityBar";
 import type{ BidOption } from "../domain/types";
 
 export default function BidCard({
@@ -49,7 +48,6 @@ export default function BidCard({
 
               <div className="w-48">
                 <div className="text-right text-sm font-semibold">{opt.price} ₽</div>
-                <ProbabilityBar p={opt.pAccept}/>
               </div>
             </button>
           );
